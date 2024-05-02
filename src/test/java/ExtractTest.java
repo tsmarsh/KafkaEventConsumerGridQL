@@ -97,8 +97,6 @@ public class ExtractTest {
         try(KafkaExtractor extractor = new KafkaExtractor(consumerProps, topic, mockRepo)){
             ProducerRecord<String, String> record = new ProducerRecord<>(topic, message.toJSONString());
 
-
-
             producer.send(record, ((recordMetadata, e) -> {
                 System.out.println("Message sent");
                 latch.countDown();
