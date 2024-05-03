@@ -1,6 +1,4 @@
-package com.tailoredshapes.gridql.kafka;
-
-import com.tailoredshapes.stash.Stash;
+package com.tailoredshapes.gridql.load;
 
 public interface Repository<I, T> {
     void create(T payload);

@@ -1,5 +1,6 @@
-import com.tailoredshapes.gridql.kafka.KafkaExtractor;
-import com.tailoredshapes.gridql.kafka.Repository;
+package com.tailoredshapes.gridql.kafka;
+
+import com.tailoredshapes.gridql.load.Repository;
 import com.tailoredshapes.stash.Stash;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;

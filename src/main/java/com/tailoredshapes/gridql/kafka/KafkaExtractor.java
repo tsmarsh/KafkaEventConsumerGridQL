@@ -1,5 +1,6 @@
 package com.tailoredshapes.gridql.kafka;
 
+import com.tailoredshapes.gridql.load.Repository;
 import com.tailoredshapes.stash.Stash;
 
 import org.apache.kafka.streams.KafkaStreams;
