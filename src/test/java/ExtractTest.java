@@ -50,8 +50,6 @@ public class ExtractTest {
     @BeforeAll
     static void beforeAll() {
         kafka = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.4.0"));
-
-        kafka.setPortBindings(list("51091:9093"));
         kafka.start();
 
         servers = kafka.getBootstrapServers();
