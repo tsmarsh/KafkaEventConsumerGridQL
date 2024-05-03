@@ -1,4 +1,4 @@
-package com.tailoredshapes.gridql.kafka;
+package com.tailoredshapes.gridql.extract;
 
 import com.tailoredshapes.gridql.load.Repository;
 import com.tailoredshapes.stash.Stash;

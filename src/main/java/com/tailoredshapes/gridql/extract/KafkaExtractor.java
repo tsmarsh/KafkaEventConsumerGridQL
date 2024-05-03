@@ -1,4 +1,4 @@
-package com.tailoredshapes.gridql.kafka;
+package com.tailoredshapes.gridql.extract;
 
 import com.tailoredshapes.gridql.load.Repository;
 import com.tailoredshapes.stash.Stash;
@@ -9,12 +9,6 @@ import org.apache.kafka.streams.kstream.KStream;
 
 import java.util.Properties;
 import java.util.logging.Logger;
-
-enum Operations {
-    CREATE,
-    DELETE,
-    UPDATE
-}
 
 public class KafkaExtractor implements AutoCloseable {
 
