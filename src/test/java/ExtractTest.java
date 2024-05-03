@@ -29,14 +29,15 @@ import static org.mockito.Mockito.verify;
 public class ExtractTest {
 
     private static KafkaContainer kafka;
-    private static KafkaProducer<String, String> producer;
+    private KafkaProducer<String, String> producer;
 
     private static Properties consumerProps;
     private static Properties producerProps;
+    private static String servers;
 
-    private void createTopic(String topicName) {
+    private void createTopic(String topicName, String servers) {
         Properties config = new Properties();
-        config.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
+        config.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
 
         try (AdminClient admin = AdminClient.create(config)) {
             NewTopic newTopic = new NewTopic(topicName, 1, (short) 1);
@@ -53,23 +54,25 @@ public class ExtractTest {
         kafka.setPortBindings(list("51091:9093"));
         kafka.start();
 
-        String bootstrapServers = kafka.getBootstrapServers();
+        servers = kafka.getBootstrapServers();
 
-        System.out.println("Kafka Server: " + bootstrapServers);
+        System.out.println("Kafka Server: " + servers);
         consumerProps = new Properties();
         consumerProps.put(StreamsConfig.APPLICATION_ID_CONFIG, "extract-test");
-        consumerProps.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        consumerProps.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
         consumerProps.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
         consumerProps.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
 
         producerProps = new Properties();
 
-        producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
         producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    }
 
+    @BeforeEach
+    void setUp() {
         producer = new KafkaProducer<>(producerProps);
-
     }
 
     @AfterAll
@@ -77,16 +80,15 @@ public class ExtractTest {
         kafka.stop();
     }
 
-    @AfterEach
-    void tearDown() {
-        kafka.stop();
-    }
-
     @Test
-    void shouldForwardEventsToTransformer() {
+    void shouldForwardCreateEventsToTransformer() {
         String topic = "extract-test-topic";
 
-        createTopic(topic);
+        createTopic(topic, servers);
+
+        Properties createProps = new Properties();
+        createProps.putAll(consumerProps);
+        createProps.put(StreamsConfig.APPLICATION_ID_CONFIG, "extract-create-test");
 
         Repository<String, Stash> mockRepo = mock(Repository.class);
         Stash payload = stash("eggs", 4.0, "name", "chuck");
@@ -94,7 +96,9 @@ public class ExtractTest {
 
         CountDownLatch latch = new CountDownLatch(1);
 
-        try(KafkaExtractor extractor = new KafkaExtractor(consumerProps, topic, mockRepo)){
+
+        try(KafkaExtractor extractor = new KafkaExtractor(createProps, topic, mockRepo)){
+            extractor.start();
             ProducerRecord<String, String> record = new ProducerRecord<>(topic, message.toJSONString());
 
             producer.send(record, ((recordMetadata, e) -> {
@@ -109,4 +113,73 @@ public class ExtractTest {
             throw new RuntimeException(e);
         }
     }
+
+    @Test
+    void shouldForwardDeleteEventsToTransformer() {
+        String topic = "extract-delete-test-topic";
+
+        createTopic(topic, servers);
+
+        Properties deleteProps = new Properties();
+        deleteProps.putAll(consumerProps);
+        deleteProps.put(StreamsConfig.APPLICATION_ID_CONFIG, "extract-delete-test");
+
+        Repository<String, Stash> mockRepo = mock(Repository.class);
+        Stash payload = stash();
+        String id = "123124";
+        Stash message = stash("id", id, "operation", "DELETE", "payload", payload);
+
+        CountDownLatch latch = new CountDownLatch(1);
+
+        try(KafkaExtractor extractor = new KafkaExtractor(deleteProps, topic, mockRepo)){
+            extractor.start();
+            ProducerRecord<String, String> record = new ProducerRecord<>(topic, message.toJSONString());
+
+            producer.send(record, ((recordMetadata, e) -> {
+                System.out.println("Message sent");
+                latch.countDown();
+            }));
+
+            latch.await(10, TimeUnit.SECONDS);
+            System.out.println("Latch cleared");
+            verify(mockRepo, Mockito.timeout(2000)).delete(id);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
+    void shouldForwardUpdateEventsToTransformer() {
+        String topic = "extract-update-test-topic";
+
+        createTopic(topic, servers);
+
+        Properties updateProps = new Properties();
+        updateProps.putAll(consumerProps);
+        updateProps.put(StreamsConfig.APPLICATION_ID_CONFIG, "extract-update-test");
+
+        Repository<String, Stash> mockRepo = mock(Repository.class);
+        Stash payload = stash("eggs", 8.0, "name", "chuck");
+        String id = "123124";
+        Stash message = stash("id", id, "operation", "UPDATE", "payload", payload);
+
+        CountDownLatch latch = new CountDownLatch(1);
+
+        try(KafkaExtractor extractor = new KafkaExtractor(updateProps, topic, mockRepo)){
+            extractor.start();
+            ProducerRecord<String, String> record = new ProducerRecord<>(topic, message.toJSONString());
+
+            producer.send(record, ((recordMetadata, e) -> {
+                System.out.println("Message sent");
+                latch.countDown();
+            }));
+
+            latch.await(10, TimeUnit.SECONDS);
+            System.out.println("Latch cleared");
+            verify(mockRepo, Mockito.timeout(2000)).update(id, payload);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 }

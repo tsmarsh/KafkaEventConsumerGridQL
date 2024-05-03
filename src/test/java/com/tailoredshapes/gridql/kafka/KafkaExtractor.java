@@ -30,9 +30,11 @@ public class KafkaExtractor implements AutoCloseable {
         kStream.foreach(this::forward);
 
         streams = new KafkaStreams(builder.build(), props);
-        streams.start();
     }
 
+    public void start(){
+        streams.start();
+    }
     private void forward(String key, String value) {
         System.out.println("Processing...");
         Stash message = Stash.parseJSON(value);
