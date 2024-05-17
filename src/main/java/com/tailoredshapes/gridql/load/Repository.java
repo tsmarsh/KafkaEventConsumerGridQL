@@ -1,9 +1,11 @@
 package com.tailoredshapes.gridql.load;
 
+import java.util.concurrent.CompletableFuture;
+
 public interface Repository<I, T> {
-    void create(T payload);
+    CompletableFuture<String> create(T payload);
 
-    void update(I id, T payload);
+    CompletableFuture<String> update(I id, T payload);
 
-    void delete(I id);
+    CompletableFuture<String> delete(I id);
 }
